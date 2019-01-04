@@ -4,7 +4,7 @@ HOST = '127.0.0.1'
 USERNAME = 'root'
 PASSWORD = '123456'
 DB = "test"
-PATH = "D:/changes/"
+PATH = "D:/db_changes/"
 
 client = Mysql2::Client.new(
     :host     => HOST, 
@@ -12,12 +12,12 @@ client = Mysql2::Client.new(
     :password => PASSWORD   
     )
 
-client.query("use information_schema")
+client.query("USE information_schema")
 
 sql = "SELECT `TABLE_NAME` FROM `TABLES` WHERE `TABLE_NAME` = 'db_version' AND `TABLE_SCHEMA` = '#{DB}'"
 results = client.query(sql)
 
-client.query("use #{DB}")
+client.query("USE #{DB}")
 
 if results.size() == 0 
     sql = "CREATE TABLE `db_version` ( `version` INT ) ENGINE 'InnoDb' CHARACTER SET 'utf8' COLLATE 'utf8_general_ci'"
@@ -28,7 +28,7 @@ sql = "SELECT `version` FROM `db_version`"
 results = client.query(sql)
 
 if results.size() == 0 
-    sql = "INSERT INTO `db_version` VALUES (0);"
+    sql = "INSERT INTO `db_version` VALUES (0)"
     client.query(sql)
     latest_version = 0
 else
@@ -74,7 +74,7 @@ if changes_array.size() > 0
     end
 end
 
-puts "数据库已经是最新版本！"
+puts "数据库已更新至版本:#{latest_version}"
 
  
 
