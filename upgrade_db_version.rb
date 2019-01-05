@@ -3,8 +3,8 @@ require 'mysql2'
 HOST = '127.0.0.1'
 USERNAME = 'root'
 PASSWORD = '123456'
-DB = "test"
-PATH = "D:/db_changes/"
+DB = 'test'
+PATH = './db_changes/'
 
 client = Mysql2::Client.new(
     :host     => HOST, 
