@@ -59,8 +59,7 @@ if changes_array.size() > 0
             changes_array.each do |version|
                 filename = changes_hash[version]
                 puts filename
-                file = File.open(PATH + filename)
-                sql = file.read()
+                sql = File.read(PATH + filename)
                 puts sql
                 results = client.query(sql)
                 latest_version = version
