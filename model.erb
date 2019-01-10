@@ -9,14 +9,14 @@ package <%=PACKAGE_NAME%>
 
 import(
      <% import_list.each do |i| %>
-          <%=i%>
+          <%=i-%>
      <% end %>
 )
 
 
 type <%=struct_name%> struct {
     <% column_list.each do |column| %>
-    <%=column['field_name']%> <%=column['type']%> `db:"<%=column['name']%>" json:"<%=column['name']%>"` <% if column['comment']!="" %>// <% end %><%=column['comment']%>
+    <%=column['field_name']%> <%=column['type']%> `db:"<%=column['name']%>" json:"<%=column['name']%>"` <% if column['comment']!="" %>// <% end %><%=column['comment']-%>
     <% end %>
 }
 
@@ -29,11 +29,11 @@ type <%=op_struct_name%> struct{}
 // 按主键查询. 注:未找到记录的话将触发sql.ErrNoRows错误
 func (op *<%=op_struct_name%>) Get(<%=primary_key_params%>) (*<%=struct_name%>, error) {
     obj := &<%=struct_name%>{}
-    sql := "<%=get_by_pk_sql2%>"
+    sql := "<%=get_by_pk_sql%>"
     err := db.<%=DB_SEL%>.Get(obj, sql, 
-        <% for key in primary_key %>
-        <%=key%>,
-        <% end %>
+        <% primary_key.each do |key| -%>
+        <%=key-%>,
+        <% end -%>
         )
     
     if err != nil{
@@ -155,11 +155,11 @@ func (op *<%=op_struct_name%>) Insert(obj *<%=struct_name%>) (int64, error) {
 func (op *<%=op_struct_name%>) InsertTx(ext sqlx.Ext, obj *<%=struct_name%>) (int64, error) {
     sql := "<%=insert_sql%>"
     result, err := ext.Exec(sql,
-    <% column_list.each do |column| %>
-        <% if not column['auto_incr'] %>
-            obj.<%=column['field_name']%>,
-        <% end %>
-    <% end %>
+    <% column_list.each do |column| -%>
+        <% if not column['auto_incr'] -%>
+            obj.<%=column['field_name']-%>,
+        <% end -%>
+    <% end -%>
     )
     if err != nil{
         log.Error("InsertTx sql error:%v, data:%v", err.Error(),obj)
@@ -173,11 +173,11 @@ func (op *<%=op_struct_name%>) InsertTx(ext sqlx.Ext, obj *<%=struct_name%>) (in
 func (op *<%=op_struct_name%>) Save(obj *<%=struct_name%>, m map[string]interface{}) ( error) {
     sql := "<%=insert_update_sql%>"
     var params = []interface{}{ 
-    <% column_list.each do |column| %>
-        <% if not column['auto_incr'] %>
-            obj.<%=column['field_name'] %>,
-        <% end %>
-    <% end %>
+    <% column_list.each do |column| -%>
+        <% if not column['auto_incr'] -%>
+            obj.<%=column['field_name']-%>,
+        <% end -%>
+    <% end -%>
 	}
     var setSql string
     for k, v := range m{
@@ -201,15 +201,14 @@ func (op *<%=op_struct_name%>) Update(obj *<%=struct_name%>) (error) {
 func (op *<%=op_struct_name%>) UpdateTx(ext sqlx.Ext, obj *<%=struct_name%>) (error) {
     sql := `<%=update_sql%>`
     _, err := ext.Exec(sql,
-    <% column_list.each do |column| %>
-        <% if not column['is_pk'] %>
-            obj.<%=column['field_name'] %>,
-        <% end %>
-    <% end %>
-
-        <% primary_field.each do |field|  %>
-            obj.<%=field%>,
-        <% end %>
+    <% column_list.each do |column| -%>
+        <% if not column['is_pk'] -%>
+            obj.<%=column['field_name'] -%>,
+        <% end -%>
+    <% end -%>
+    <% primary_field.each do |field| -%>
+        obj.<%=field-%>,
+    <% end -%>
     )
 
     if err != nil{
@@ -250,14 +249,14 @@ func (op *<%=op_struct_name%>) Delete(<%=primary_key_params%>) error{
 // 根据主键删除相关记录,Tx
 func (op *<%=op_struct_name%>) DeleteTx(ext sqlx.Ext, <%=primary_key_params%>) error{
     sql := `delete from <%=table_name%> where 1=1
-        <% primary_key.each do |key| %>
-           and <%=key%>=?
-        <% end %>
+        <% primary_key.each do |key| -%>
+           and <%=key-%>=?
+        <% end -%>
 `
     _, err := ext.Exec(sql, 
-        <% primary_key.each do |key| %>
-        <%=key%>,
-        <% end %>
+        <% primary_key.each do |key| -%>
+        <%=key-%>,
+        <% end -%>
         )
     return err
 }
@@ -279,9 +278,6 @@ func (op *<%=op_struct_name%>) DeleteByMapTx(ext sqlx.Ext, m map[string]interfac
     }
     return result.RowsAffected()
 }
-
-
-
 
 
 <% end %>

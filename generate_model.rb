@@ -6,10 +6,11 @@ HOST = '127.0.0.1'
 USERNAME = 'root'
 PASSWORD = '123456'
 DB = 'test'
-MODEL_DIR = 'D:/tools/dat/'
 DB_SEL = "DB"
+PACKAGE_NAME = "test"
+MODEL_DIR = 'D:/dat/'+PACKAGE_NAME+'/'
+TEMPLATE = ERB.new(File.read('./model.erb'),0,'-')
 
-TEMPLATE = ERB.new(File.read('./model.erb'))
 
 GO_TYPE_DICT = {
     'smallint' => 'int8',
@@ -29,7 +30,6 @@ GO_TYPE_DICT = {
     'double' => 'float64',
     'mediumblob' => 'string',
 }
-
 
 
 def get_go_type(db_name, db_type, data_type)
@@ -72,11 +72,6 @@ else
     end
 end
 
-import_list= []
-import_list.push('db "plugin.arena/dat"')
-import_list.push('log "mycommon/logs"')
-import_list.push('"github.com/jmoiron/sqlx"')
-import_list.push('"fmt"')
 
 results.each do |row|
     table_name = row['TABLE_NAME']
@@ -131,7 +126,12 @@ results.each do |row|
         })
     end
 
-    
+    import_list= []
+    import_list.push('db "plugin.arena/dat"')
+    import_list.push('log "mycommon/logs"')
+    import_list.push('"github.com/jmoiron/sqlx"')
+    import_list.push('"fmt"')
+
     if has_time_type 
         import_list.push('"time"')
     end
@@ -143,7 +143,7 @@ results.each do |row|
     }
     primary_key_params = temp_arr1.join(',')
     primary_key_param_names = temp_arr2.join(',')
-    get_by_pk_sql2 = "select * from #{table_name} where #{primary_key.map {|item|item+" = ?"}.join(' and ')}"
+    get_by_pk_sql = "select * from #{table_name} where #{primary_key.map {|item|item+" = ?"}.join(' and ')}"
 
     no_auto_increment_arr = []
     columns.each do |c|
@@ -164,27 +164,23 @@ results.each do |row|
     end
 
     update_sql = "update #{table_name} set #{no_pri_arr.map{|item|item+" = ?"}.join(',')} where #{primary_key.map{|item|item+" = ?"}.join(',')}"
+    
+    if primary_key_params != ''
+        model = TEMPLATE.result(binding)
+        target_file = MODEL_DIR + table_name + '.go'
+        File.open(target_file,'w') do |file|  
+                file.puts model  
+                puts "write #{target_file} success" 
+        end  
+    end 
 
-    model = TEMPLATE.result(binding)
-    # puts model
-    File.open(MODEL_DIR+table_name+'.go','w') do |file|  
-            file.puts model  
-    end   
+end
 
-
+Dir.chdir(MODEL_DIR) do 
+    `go fmt`
+    `go install ./`
 end
 
 
 
 
-
-# str = File.read('./model.erb')
-
-# x = 42
-# template = ERB.new(str)
-# newstr = template.result(binding)
-# puts newstr
-
-# File.open('./test.go','w') do |file|  
-#     file.puts newstr  
-# end   
