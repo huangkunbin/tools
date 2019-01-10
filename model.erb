@@ -1,0 +1,288 @@
+// <%=table_name%>
+
+<% if table_comment!="" %>
+// <%=table_comment%>
+
+<% end %>
+
+package <%=PACKAGE_NAME%>
+
+import(
+     <% import_list.each do |i| %>
+          <%=i%>
+     <% end %>
+)
+
+
+type <%=struct_name%> struct {
+    <% column_list.each do |column| %>
+    <%=column['field_name']%> <%=column['type']%> `db:"<%=column['name']%>" json:"<%=column['name']%>"` <% if column['comment']!="" %>// <% end %><%=column['comment']%>
+    <% end %>
+}
+
+
+var <%=op_name%> = &<%=op_struct_name%>{}
+
+type <%=op_struct_name%> struct{}
+
+<% if primary_key.size()>0 %>
+// 按主键查询. 注:未找到记录的话将触发sql.ErrNoRows错误
+func (op *<%=op_struct_name%>) Get(<%=primary_key_params%>) (*<%=struct_name%>, error) {
+    obj := &<%=struct_name%>{}
+    sql := "<%=get_by_pk_sql2%>"
+    err := db.<%=DB_SEL%>.Get(obj, sql, 
+        <% for key in primary_key %>
+        <%=key%>,
+        <% end %>
+        )
+    
+    if err != nil{
+        log.Error("Get data error:%v", err.Error())
+    }
+    return obj, err
+} 
+<% end %>
+
+func(op *<%=op_struct_name%>) SelectAll() ([]*<%=struct_name%>, error) {
+	objList := []*<%=struct_name%>{}
+	sql := "select * from <%=table_name%> "
+	err := db.<%=DB_SEL%>.Select(&objList, sql)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	return objList, err
+}
+
+func(op *<%=op_struct_name%>) QueryByMap(m map[string]interface{}) ([]*<%=struct_name%>, error) {
+	result := []*<%=struct_name%>{}
+    var params []interface{}
+
+	sql := "select * from <%=table_name%> where 1=1 "
+    for k, v := range m{
+        sql += fmt.Sprintf(" and %s=? ", k)
+        params = append(params, v)
+    }
+	err := db.<%=DB_SEL%>.Select(&result, sql, params...)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	return result, err
+}
+
+func(op *<%=op_struct_name%>) QueryByMapWhere(m map[string]interface{}, wr string) ([]*<%=struct_name%>, error) {
+	result := []*<%=struct_name%>{}
+    var params []interface{}
+
+	sql := "select * from <%=table_name%> where 1=1 "
+    for k, v := range m{
+        sql += fmt.Sprintf(" and %s=? ", k)
+        params = append(params, v)
+    }
+
+	err := db.<%=DB_SEL%>.Select(&result, sql + wr, params...)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	return result, err
+}
+
+func(op *<%=op_struct_name%>) GetByMap(m map[string]interface{}) (*<%=struct_name%>, error) {
+    objs := []*<%=struct_name%>{}
+    var params []interface{}
+    
+    sql := "select * from <%=table_name%> where 1=1 "
+
+    for k, v := range m{
+        sql += fmt.Sprintf(" and %s=? ", k)
+        params = append(params, v)
+    }
+
+    sql += "limit 1"
+
+    err := db.<%=DB_SEL%>.Select(&objs, sql, params...)
+    
+    if err != nil{
+        log.Error("Get data error:%v", err.Error())
+    }
+
+    if len(objs) > 0 {
+		return objs[0], err
+	} else {
+		return &<%=struct_name%>{}, err
+	}
+}
+
+// 返回符合查询条件的记录数
+func (op *<%=op_struct_name%>) CountByMap(m map[string]interface{}) (int64, error) {
+    var params []interface{}
+    sql := `select count(*) from <%=table_name%> where 1=1 `
+    for k, v := range m{
+        sql += fmt.Sprintf(" and  %s=? ",k)
+        params = append(params, v)
+    }
+    var count int64
+    err := db.<%=DB_SEL%>.Get(&count, sql, params...)
+    if err != nil {
+        log.Error("CountByMap  error:%v data :%v", err.Error(), m)
+    }
+    return count, err
+}
+
+func(op *<%=op_struct_name%>) CountByMapWhere(m map[string]interface{}, wr string) (int64, error) {
+	var params []interface{}
+    sql := `select count(*) from <%=table_name%> where 1=1 `
+    for k, v := range m{
+        sql += fmt.Sprintf(" and  %s=? ",k)
+        params = append(params, v)
+    }
+    var count int64
+    err := db.<%=DB_SEL%>.Get(&count, sql + wr, params...)
+    if err != nil {
+        log.Error("CountByMap  error:%v data :%v", err.Error(), m)
+    }
+    return count, err
+}
+
+
+<% if not is_view %>
+
+// 插入数据，自增长字段将被忽略
+func (op *<%=op_struct_name%>) Insert(obj *<%=struct_name%>) (int64, error) {
+    return op.InsertTx(db.<%=DB_SEL%>, obj)
+}
+
+// 插入数据，自增长字段将被忽略
+func (op *<%=op_struct_name%>) InsertTx(ext sqlx.Ext, obj *<%=struct_name%>) (int64, error) {
+    sql := "<%=insert_sql%>"
+    result, err := ext.Exec(sql,
+    <% column_list.each do |column| %>
+        <% if not column['auto_incr'] %>
+            obj.<%=column['field_name']%>,
+        <% end %>
+    <% end %>
+    )
+    if err != nil{
+        log.Error("InsertTx sql error:%v, data:%v", err.Error(),obj)
+    }
+    
+    affected, _ := result.LastInsertId()
+    return affected, err 
+}
+
+// 存在就更新， 不存在就插入
+func (op *<%=op_struct_name%>) Save(obj *<%=struct_name%>, m map[string]interface{}) ( error) {
+    sql := "<%=insert_update_sql%>"
+    var params = []interface{}{ 
+    <% column_list.each do |column| %>
+        <% if not column['auto_incr'] %>
+            obj.<%=column['field_name'] %>,
+        <% end %>
+    <% end %>
+	}
+    var setSql string
+    for k, v := range m{
+		if setSql != "" {
+			setSql += ","
+		}
+        setSql += fmt.Sprintf(" %s=? ", k)
+        params = append(params, v)
+    }
+
+    _, err := db.<%=DB_SEL%>.Exec(sql + setSql, params...)
+    return err
+}
+
+// 用主键(属性)做条件，更新除主键外的所有字段
+func (op *<%=op_struct_name%>) Update(obj *<%=struct_name%>) (error) {
+    return op.UpdateTx(db.<%=DB_SEL%>, obj)
+}
+
+// 用主键(属性)做条件，更新除主键外的所有字段
+func (op *<%=op_struct_name%>) UpdateTx(ext sqlx.Ext, obj *<%=struct_name%>) (error) {
+    sql := `<%=update_sql%>`
+    _, err := ext.Exec(sql,
+    <% column_list.each do |column| %>
+        <% if not column['is_pk'] %>
+            obj.<%=column['field_name'] %>,
+        <% end %>
+    <% end %>
+
+        <% primary_field.each do |field|  %>
+            obj.<%=field%>,
+        <% end %>
+    )
+
+    if err != nil{
+		log.Error("update sql error:%v, data:%v", err.Error(),obj)
+    }
+
+    return err
+}
+
+// 用主键做条件，更新map里包含的字段名
+func (op *<%=op_struct_name%>) UpdateByMap(<%=primary_key_params%>, m map[string]interface{}) (error) {
+    return op.UpdateByMapTx(db.<%=DB_SEL%>, <%=primary_key_param_names%>, m)
+}
+
+// 用主键做条件，更新map里包含的字段名
+func (op *<%=op_struct_name%>) UpdateByMapTx(ext sqlx.Ext, <%=primary_key_params%>, m map[string]interface{}) (error) {
+    sql := `update <%=table_name%> set %s where 1=1 <% primary_key.each do |key| %> and <%=key%>=? <% end %>;`
+
+    var params []interface{}
+    var setSql string
+    for k, v := range m{
+		if setSql != "" {
+			setSql += ","
+		}
+        setSql += fmt.Sprintf(" %s=? ", k)
+        params = append(params, v)
+    }
+	params = append(params, <%=primary_key_param_names%>)
+    _, err := ext.Exec(fmt.Sprintf(sql, setSql), params...)
+    return err
+}
+
+// 根据主键删除相关记录
+func (op *<%=op_struct_name%>) Delete(<%=primary_key_params%>) error{
+    return op.DeleteTx(db.<%=DB_SEL%>, <%=primary_key_param_names%>)
+}
+
+// 根据主键删除相关记录,Tx
+func (op *<%=op_struct_name%>) DeleteTx(ext sqlx.Ext, <%=primary_key_params%>) error{
+    sql := `delete from <%=table_name%> where 1=1
+        <% primary_key.each do |key| %>
+           and <%=key%>=?
+        <% end %>
+`
+    _, err := ext.Exec(sql, 
+        <% primary_key.each do |key| %>
+        <%=key%>,
+        <% end %>
+        )
+    return err
+}
+
+func (op *<%=op_struct_name%>) DeleteByMap(m map[string]interface{})(int64, error){
+	return op.DeleteByMapTx(db.<%=DB_SEL%>, m)
+}
+
+func (op *<%=op_struct_name%>) DeleteByMapTx(ext sqlx.Ext, m map[string]interface{}) (int64, error){
+	var params []interface{}
+	sql := "delete from <%=table_name%> where 1=1 "
+	for k, v := range m {
+		sql += fmt.Sprintf(" and %s=? ", k)
+		params = append(params, v)
+	}
+	result, err := ext.Exec(sql, params...) 
+    if err != nil {
+       log.Error(err.Error())
+    }
+    return result.RowsAffected()
+}
+
+
+
+
+
+<% end %>
+
