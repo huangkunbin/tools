@@ -163,7 +163,7 @@ results.each do |row|
         end
     end
 
-    update_sql = "update #{table_name} set #{no_pri_arr.map{|item|item+" = ?"}.join(',')} where #{primary_key.map{|item|item+" = ?"}.join(',')}"
+    update_sql = "update #{table_name} set #{no_pri_arr.map{|item|item+"=?"}.join(',')} where #{primary_key.map{|item|item+"=?"}.join(',')}"
     
     if primary_key_params != ''
         model = TEMPLATE.result(binding)

@@ -225,7 +225,7 @@ func (op *<%=op_struct_name%>) UpdateByMap(<%=primary_key_params%>, m map[string
 
 // 用主键做条件，更新map里包含的字段名
 func (op *<%=op_struct_name%>) UpdateByMapTx(ext sqlx.Ext, <%=primary_key_params%>, m map[string]interface{}) (error) {
-    sql := `update <%=table_name%> set %s where 1=1 <% primary_key.each do |key| %> and <%=key%>=? <% end %>;`
+    sql := `update <%=table_name%> set %s where 1=1 <% primary_key.each do |key| %>and <%=key%>=? <% end %>;`
 
     var params []interface{}
     var setSql string
