@@ -43,6 +43,32 @@ func (op *<%=op_struct_name%>) Get(<%=primary_key_params%>) (*<%=struct_name%>, 
 } 
 <% end %>
 
+func(op *<%=op_struct_name%>) GetByMap(m map[string]interface{}) (*<%=struct_name%>, error) {
+    objs := []*<%=struct_name%>{}
+    var params []interface{}
+    
+    sql := "select * from <%=table_name%> where 1=1 "
+
+    for k, v := range m{
+        sql += fmt.Sprintf(" and %s=? ", k)
+        params = append(params, v)
+    }
+
+    sql += "limit 1"
+
+    err := db.<%=DB_SEL%>.Select(&objs, sql, params...)
+    
+    if err != nil{
+        log.Error("Get data error:%v", err.Error())
+    }
+
+    if len(objs) > 0 {
+		return objs[0], err
+	} else {
+		return &<%=struct_name%>{}, err
+	}
+}
+
 func(op *<%=op_struct_name%>) SelectAll() ([]*<%=struct_name%>, error) {
 	objList := []*<%=struct_name%>{}
 	sql := "select * from <%=table_name%> "
@@ -84,32 +110,6 @@ func(op *<%=op_struct_name%>) QueryByMapWhere(m map[string]interface{}, wr strin
 		log.Error(err.Error())
 	}
 	return result, err
-}
-
-func(op *<%=op_struct_name%>) GetByMap(m map[string]interface{}) (*<%=struct_name%>, error) {
-    objs := []*<%=struct_name%>{}
-    var params []interface{}
-    
-    sql := "select * from <%=table_name%> where 1=1 "
-
-    for k, v := range m{
-        sql += fmt.Sprintf(" and %s=? ", k)
-        params = append(params, v)
-    }
-
-    sql += "limit 1"
-
-    err := db.<%=DB_SEL%>.Select(&objs, sql, params...)
-    
-    if err != nil{
-        log.Error("Get data error:%v", err.Error())
-    }
-
-    if len(objs) > 0 {
-		return objs[0], err
-	} else {
-		return &<%=struct_name%>{}, err
-	}
 }
 
 // 返回符合查询条件的记录数
