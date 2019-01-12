@@ -177,8 +177,8 @@ results.each do |row|
 end
 
 Dir.chdir(MODEL_DIR) do 
-    `go fmt`
-    `go install ./`
+    system 'go fmt'
+    system 'go install ./'
 end
 
 
