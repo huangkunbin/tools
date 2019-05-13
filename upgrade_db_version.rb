@@ -79,6 +79,11 @@ class C
                     puts "[#{db}]=>"+filename
                     script = File.read(path + "/" + filename)
                     # puts script
+                    if script == ""
+                        puts "内容为空,忽略"
+                        next
+                    end
+
                     sql = ""
                     if File.extname(filename) == ".rb"
                         eval(script)
