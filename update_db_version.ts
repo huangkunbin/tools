@@ -96,7 +96,7 @@ class DB {
       ]);
     });
 
-    console.log("数据库" + db_name + "已更新至版本:" + latest_version);
+    console.log("数据库[" + db_name + "]已更新至版本:" + latest_version);
   }
 }
 
