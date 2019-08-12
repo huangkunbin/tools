@@ -83,7 +83,7 @@ class DB {
         }
 
         if (file_name.split(".")[1] == "ts") {
-          // TODO eval(script);
+          await import(script).then(exe => exe.invoke(this.client));
         } else {
           await conn.execute(script);
         }
