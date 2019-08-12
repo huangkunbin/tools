@@ -73,8 +73,10 @@ class DB {
 
         console.log("[" + db_name + "]=>" + file_name);
 
+        const absolute_path = path + "/" + file_name;
+
         const decoder = new TextDecoder("utf-8");
-        const data = await Deno.readFile(path + "/" + file_name);
+        const data = await Deno.readFile(absolute_path);
         let script = decoder.decode(data);
 
         if (script == "") {
@@ -83,7 +85,7 @@ class DB {
         }
 
         if (file_name.split(".")[1] == "ts") {
-          await import(script).then(exe => exe.invoke(this.client));
+          await import(absolute_path).then(exe => exe.invoke(this.client));
         } else {
           await conn.execute(script);
         }
