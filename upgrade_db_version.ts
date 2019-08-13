@@ -85,7 +85,11 @@ class DB {
         }
 
         if (file_name.split(".")[1] == "ts") {
-          await import(absolute_path).then(exe => exe.invoke(this.client));
+          await import(absolute_path)
+            .then(exe => exe.invoke(conn))
+            .catch(err => {
+              throw err;
+            });
         } else {
           await conn.execute(script);
         }
