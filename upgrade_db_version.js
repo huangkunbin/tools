@@ -11,20 +11,13 @@ async function upgrade(conn, db_name, path) {
     await conn.query("USE information_schema");
 
     let result = await conn.query("SELECT `TABLE_NAME` FROM `TABLES` WHERE `TABLE_NAME` = 'db_version' AND `TABLE_SCHEMA` = ?", [db_name]);
-    let rows = result[0]
-
+    
     await conn.query("USE " + db_name);
 
-    if (rows.length == 0) {
+    if (result[0].length == 0) {
         await conn.query(
             "CREATE TABLE `db_version` ( `version` INT,`is_execute` INT,PRIMARY KEY (`version`))  ENGINE 'InnoDb' CHARACTER SET 'utf8' COLLATE 'utf8_general_ci'"
         );
-    }
-
-    result = await conn.query("SELECT MAX(`version`) FROM `db_version`");
-    let latest_version = result[0][0]['MAX(`version`)']
-    if (!latest_version) {
-        latest_version = 0
     }
 
     let changes_array = new Array();
@@ -37,23 +30,27 @@ async function upgrade(conn, db_name, path) {
     }
     changes_array.sort();
 
+    let db_version = new Map();
+    result = await conn.query("SELECT * FROM `db_version`");
+    for (let row of result[0]) {
+        db_version[row.version] = row.is_execute
+    }
+
     for (let version of changes_array) {
-        let is_execute = 0
-        if (version > latest_version) {
-            let file_name = changes_map[version];
-            console.log("[" + db_name + "]=>" + file_name);
-            const script = fs.readFileSync(path + "/" + file_name, "utf-8");
-            await conn.query(script);
-            is_execute = 1
+        if (db_version[version]){
+            continue
         }
-        await conn.query("INSERT IGNORE INTO `db_version` VALUES (?,?)", [version, is_execute]);
+        let file_name = changes_map[version];
+        console.log("[" + db_name + "]=>" + file_name);
+        const script = fs.readFileSync(path + "/" + file_name, "utf-8");
+        await conn.query(script);
+        await conn.query("INSERT INTO `db_version` VALUES (?,?)", [version, 1]);
     }
 
     result = await conn.query("SELECT MAX(`version`) FROM `db_version`");
-    latest_version = result[0][0]['MAX(`version`)']
+    let latest_version = result[0][0]['MAX(`version`)']
     console.log("数据库[" + db_name + "]已更新至版本:" + latest_version);
 }
-
 
 function Ask(query) {
     const rl = readline.createInterface({
@@ -67,7 +64,12 @@ function Ask(query) {
 }
 
 (async function main() {
-    var DB = process.env.MY_DB
+    if (process.argv.slice(2).length > 0) {
+        var DB = process.argv.slice(2)[0].split('=')[1]
+    }
+    if (!DB) {
+        DB = process.env.MY_DB
+    }
     if (!DB) {
         DB = await Ask("请输入你的数据库名:")
     }
