@@ -11,7 +11,7 @@ async function upgrade(conn, db_name, path) {
     await conn.query("USE information_schema");
 
     let result = await conn.query("SELECT `TABLE_NAME` FROM `TABLES` WHERE `TABLE_NAME` = 'db_version' AND `TABLE_SCHEMA` = ?", [db_name]);
-    
+
     await conn.query("USE " + db_name);
 
     if (result[0].length == 0) {
@@ -37,12 +37,15 @@ async function upgrade(conn, db_name, path) {
     }
 
     for (let version of changes_array) {
-        if (db_version[version]){
+        if (db_version[version]) {
             continue
         }
         let file_name = changes_map[version];
         console.log("[" + db_name + "]=>" + file_name);
-        const script = fs.readFileSync(path + "/" + file_name, "utf-8");
+        let script = fs.readFileSync(path + "/" + file_name, "utf-8");
+        if (script.charCodeAt(0) === 0xFEFF) {
+            script = script.slice(1);
+        }
         await conn.query(script);
         await conn.query("INSERT INTO `db_version` VALUES (?,?)", [version, 1]);
     }
