@@ -25,8 +25,10 @@ async function upgrade(conn, db_name, path) {
     const files = fs.readdirSync(path)
     for (let f of files) {
         let version = f.split(".")[0];
-        changes_array.push(version);
-        changes_map[version] = f;
+        if (version) {
+            changes_array.push(version);
+            changes_map[version] = f;
+        }
     }
     changes_array.sort();
 
