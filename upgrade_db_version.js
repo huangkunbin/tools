@@ -2,10 +2,11 @@ const mysql = require('mysql2/promise');
 const readline = require('readline');
 const fs = require('fs');
 
-const HOST = "192.168.16.217";
-const USER = "root";
-const PASSWORD = "123456";
-const DB_CHANGE_PATH = "./db_changes";
+let HOST = "127.0.0.1";
+let USER = "root";
+let PASSWORD = "123456";
+let DB_CHANGE_PATH = "./db_changes";
+let DB = "";
 
 async function upgrade(conn, db_name, path) {
     await conn.query("USE information_schema");
@@ -68,20 +69,44 @@ function Ask(query) {
     }))
 }
 
-(async function main() {
-    if (process.argv.slice(2).length > 0) {
-        var DB = process.argv.slice(2)[0].split('=')[1]
+function ParseFlag(argv) {
+    for (let arg of argv) {
+        let flag = arg.split('=')
+        switch (flag[0]) {
+            case "DB":
+                DB = flag[1]
+                break
+            case "HOST":
+                HOST = flag[1]
+                break
+            case "USER":
+                USER = flag[1]
+                break
+            case "PASSWORD":
+                PASSWORD = flag[1]
+                break
+            case "DB_CHANGE_PATH":
+                DB_CHANGE_PATH = flag[1]
+                break
+        }
     }
+}
+
+(async function main() {
+    ParseFlag(process.argv)
     if (!DB) {
         DB = process.env.MY_DB
     }
     if (!DB) {
         DB = await Ask("请输入你的数据库名:")
     }
+    let dbs = DB.split(',')
     const conn = await mysql.createConnection({ host: HOST, user: USER, password: PASSWORD, multipleStatements: true });
     try {
         await conn.beginTransaction();
-        await upgrade(conn, DB, DB_CHANGE_PATH);
+        for (let db of dbs) {
+            await upgrade(conn, db, DB_CHANGE_PATH);
+        }
         await conn.commit();
     } catch (err) {
         await conn.rollback();
