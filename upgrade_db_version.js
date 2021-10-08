@@ -109,8 +109,9 @@ function ParseFlag(argv) {
         }
         await conn.commit();
     } catch (err) {
+        console.log(err);
         await conn.rollback();
-        throw err;
+        process.exitCode = 1;
     } finally {
         await conn.end();
     }
